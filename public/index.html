@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Premium Chocolate Sales Dashboard with AI Chatbot - Real-time analytics and insights">
+  <title>🍫 Chocolate Sales Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="logo-icon">🍫</span>
+        <div>
+          <h1>Chocolate Sales Dashboard</h1>
+          <p class="subtitle" id="dateRange">Loading data...</p>
+        </div>
+      </div>
+      <div class="header-badge">
+        <span class="live-dot"></span> Live Data
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI Cards -->
+  <section class="kpi-section">
+    <div class="kpi-card" id="kpi-sales">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-content">
+        <span class="kpi-label">Total Revenue</span>
+        <span class="kpi-value" id="totalSales">--</span>
+      </div>
+      <div class="kpi-glow kpi-glow-cyan"></div>
+    </div>
+    <div class="kpi-card" id="kpi-boxes">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-content">
+        <span class="kpi-label">Boxes Shipped</span>
+        <span class="kpi-value" id="totalBoxes">--</span>
+      </div>
+      <div class="kpi-glow kpi-glow-purple"></div>
+    </div>
+    <div class="kpi-card" id="kpi-avg">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-content">
+        <span class="kpi-label">Avg per Shipment</span>
+        <span class="kpi-value" id="avgSale">--</span>
+      </div>
+      <div class="kpi-glow kpi-glow-pink"></div>
+    </div>
+    <div class="kpi-card" id="kpi-products">
+      <div class="kpi-icon">🍬</div>
+      <div class="kpi-content">
+        <span class="kpi-label">Products</span>
+        <span class="kpi-value" id="productCount">--</span>
+      </div>
+      <div class="kpi-glow kpi-glow-amber"></div>
+    </div>
+    <div class="kpi-card" id="kpi-shipments">
+      <div class="kpi-icon">🚚</div>
+      <div class="kpi-content">
+        <span class="kpi-label">Shipments</span>
+        <span class="kpi-value" id="shipmentCount">--</span>
+      </div>
+      <div class="kpi-glow kpi-glow-green"></div>
+    </div>
+    <div class="kpi-card" id="kpi-persons">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-content">
+        <span class="kpi-label">Sales Team</span>
+        <span class="kpi-value" id="personCount">--</span>
+      </div>
+      <div class="kpi-glow kpi-glow-teal"></div>
+    </div>
+  </section>
+
+  <!-- Charts Grid -->
+  <section class="charts-grid">
+    <!-- Monthly Trend - Full Width -->
+    <div class="chart-card chart-full">
+      <div class="chart-header">
+        <h3>📈 Monthly Sales Trend</h3>
+        <span class="chart-badge">15 Months</span>
+      </div>
+      <div class="chart-body">
+        <canvas id="monthlyTrendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Sales by Region -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>🌍 Sales by Region</h3>
+      </div>
+      <div class="chart-body chart-body-doughnut">
+        <canvas id="regionChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Sales by Category -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>🏷️ Sales by Category</h3>
+      </div>
+      <div class="chart-body chart-body-doughnut">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Country Breakdown - Full Width -->
+    <div class="chart-card chart-full">
+      <div class="chart-header">
+        <h3>🌐 Revenue by Country</h3>
+        <span class="chart-badge">6 Countries</span>
+      </div>
+      <div class="chart-body">
+        <canvas id="countryChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top 10 Sales Persons -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>🏆 Top 10 Sales Persons</h3>
+      </div>
+      <div class="chart-body">
+        <canvas id="topSalesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top 10 Products -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>🍫 Top 10 Products</h3>
+      </div>
+      <div class="chart-body">
+        <canvas id="topProductsChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Product Profitability Matrix - Full Width -->
+    <div class="chart-card chart-full">
+      <div class="chart-header">
+        <h3>💎 Product Profitability Matrix</h3>
+        <span class="chart-badge">Cost vs Revenue · Bubble = Volume</span>
+      </div>
+      <div class="chart-body chart-body-tall">
+        <canvas id="profitabilityChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Team Performance - Full Width -->
+    <div class="chart-card chart-full">
+      <div class="chart-header">
+        <h3>👥 Team Performance</h3>
+      </div>
+      <div class="chart-body">
+        <canvas id="teamChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chat Button -->
+  <button class="chat-fab" id="chatFab" onclick="toggleChat()" aria-label="Open AI Chatbot">
+    <span class="chat-fab-icon" id="chatFabIcon">💬</span>
+    <span class="chat-fab-pulse"></span>
+  </button>
+
+  <!-- Chat Panel -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-panel-header">
+      <div class="chat-header-info">
+        <span class="chat-avatar">🤖</span>
+        <div>
+          <h4>ChocBot AI</h4>
+          <span class="chat-status">Ask me anything about the data</span>
+        </div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()" aria-label="Close chat">&times;</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages will be injected here -->
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="chatInput" placeholder="Ask about sales, products, teams..." autocomplete="off" />
+      <button id="chatSend" onclick="sendMessage()" aria-label="Send message">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Drill-down Detail Overlay -->
+  <div id="drillOverlay" class="drill-overlay" role="dialog" aria-modal="true">
+    <div class="drill-panel">
+      <div class="drill-header">
+        <div class="drill-title-group">
+          <span id="drillIcon" class="drill-icon">📊</span>
+          <div>
+            <h2 id="drillTitle">Detail View</h2>
+            <p id="drillSubtitle"></p>
+          </div>
+        </div>
+        <div class="drill-header-right">
+          <span id="drillCount" class="drill-count"></span>
+          <button class="drill-close" onclick="closeDrill()" aria-label="Close detail view">✕</button>
+        </div>
+      </div>
+      <div class="drill-content">
+        <table class="drill-table">
+          <thead id="drillHead"></thead>
+          <tbody id="drillBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
