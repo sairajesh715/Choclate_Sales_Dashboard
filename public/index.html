@@ -11,6 +11,61 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <!-- ===== LANDING OVERLAY ===== -->
+  <div id="landingOverlay" class="lnd-overlay">
+    <canvas id="landingCanvas" class="lnd-canvas"></canvas>
+    <div class="lnd-content">
+
+      <div class="lnd-eyebrow">
+        <span class="lnd-live-dot"></span> Live Analytics Platform
+      </div>
+
+      <h1 class="lnd-headline">Chocolate Sales<br><span class="lnd-headline-accent">Intelligence</span></h1>
+
+      <p class="lnd-subline">Real-time sales intelligence across 6 countries, 22 products &amp; 25 top performers</p>
+
+      <div class="lnd-chips">
+        <span class="lnd-chip">📈 8 Interactive Charts</span>
+        <span class="lnd-chip">🔍 Drill-Down Analysis</span>
+        <span class="lnd-chip">🤖 AI Chatbot</span>
+        <span class="lnd-chip">📥 CSV Export</span>
+      </div>
+
+      <div class="lnd-stats">
+        <div class="lnd-stat-card">
+          <span class="lnd-stat-icon">💰</span>
+          <span class="lnd-stat-value" id="lndRevenue">--</span>
+          <span class="lnd-stat-label">Total Revenue</span>
+        </div>
+        <div class="lnd-stat-card">
+          <span class="lnd-stat-icon">📦</span>
+          <span class="lnd-stat-value" id="lndBoxes">--</span>
+          <span class="lnd-stat-label">Boxes Shipped</span>
+        </div>
+        <div class="lnd-stat-card">
+          <span class="lnd-stat-icon">🚚</span>
+          <span class="lnd-stat-value" id="lndShipments">--</span>
+          <span class="lnd-stat-label">Shipments</span>
+        </div>
+        <div class="lnd-stat-card">
+          <span class="lnd-stat-icon">🌍</span>
+          <span class="lnd-stat-value">6</span>
+          <span class="lnd-stat-label">Countries</span>
+        </div>
+      </div>
+
+      <div class="lnd-sparkline" id="lndSparkline" aria-hidden="true"></div>
+      <p class="lnd-date-range" id="lndDateRange">Loading data…</p>
+
+      <button class="lnd-cta" onclick="enterDashboard()">
+        Explore Dashboard <span class="lnd-arrow">→</span>
+      </button>
+
+    </div>
+  </div>
+  <!-- ===== END LANDING OVERLAY ===== -->
+
   <!-- Animated Background -->
   <div class="bg-orbs">
     <div class="orb orb-1"></div>

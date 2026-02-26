@@ -876,6 +876,126 @@ async function sendMessage() {
     }
 }
 
+// ===== LANDING PAGE =====
+
+let _stopParticles = null;
+
+function initLandingParticles(canvas) {
+    const ctx = canvas.getContext('2d');
+    let W = canvas.width  = window.innerWidth;
+    let H = canvas.height = window.innerHeight;
+
+    const COUNT = 90;
+    const LINK  = 150;
+    const particles = Array.from({ length: COUNT }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.45,
+        vy: (Math.random() - 0.5) * 0.45,
+        r: Math.random() * 1.8 + 0.8,
+        cyan: Math.random() > 0.38
+    }));
+
+    let rafId;
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        for (let i = 0; i < particles.length; i++) {
+            const a = particles[i];
+            for (let j = i + 1; j < particles.length; j++) {
+                const b = particles[j];
+                const dx = a.x - b.x, dy = a.y - b.y;
+                const d  = Math.sqrt(dx * dx + dy * dy);
+                if (d < LINK) {
+                    const alpha = ((1 - d / LINK) * 0.35).toFixed(3);
+                    ctx.strokeStyle = a.cyan
+                        ? `rgba(0,229,255,${alpha})`
+                        : `rgba(179,136,255,${alpha})`;
+                    ctx.lineWidth = 0.8;
+                    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+                }
+            }
+        }
+
+        particles.forEach(p => {
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = p.cyan ? 'rgba(0,229,255,0.65)' : 'rgba(179,136,255,0.65)';
+            ctx.fill();
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > W) p.vx *= -1;
+            if (p.y < 0 || p.y > H) p.vy *= -1;
+        });
+
+        rafId = requestAnimationFrame(draw);
+    }
+    draw();
+
+    function onResize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', onResize);
+
+    return function stop() {
+        cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', onResize);
+    };
+}
+
+async function initLanding() {
+    const canvas = document.getElementById('landingCanvas');
+    if (canvas) _stopParticles = initLandingParticles(canvas);
+
+    try {
+        const [kpis, monthly] = await Promise.all([
+            fetch('/api/kpis').then(r => r.json()),
+            fetch('/api/monthly-trend').then(r => r.json())
+        ]);
+
+        const rev  = document.getElementById('lndRevenue');
+        const box  = document.getElementById('lndBoxes');
+        const ship = document.getElementById('lndShipments');
+        const dr   = document.getElementById('lndDateRange');
+
+        if (rev)  animateValue(rev,  kpis.totalSales,    '$', '', true);
+        if (box)  animateValue(box,  kpis.totalBoxes,    '',  '', true);
+        if (ship) animateValue(ship, kpis.shipmentCount, '',  '', false);
+
+        if (dr && kpis.startDate && kpis.endDate) {
+            const fmt = d => new Date(d).toLocaleDateString('en', { month: 'short', year: 'numeric' });
+            dr.textContent = `${fmt(kpis.startDate)} → ${fmt(kpis.endDate)}  ·  15 months  ·  6 Countries  ·  22 Products`;
+        }
+
+        // Build real sparkline from monthly data
+        const sparkEl = document.getElementById('lndSparkline');
+        if (sparkEl && monthly && monthly.length) {
+            const vals = monthly.map(d => Number(d.totalSales));
+            const max  = Math.max(...vals);
+            sparkEl.innerHTML = vals.map((v, i) => {
+                const h     = Math.max(8, Math.round((v / max) * 100));
+                const delay = (i * 0.045).toFixed(3);
+                const bg    = i % 2 === 0
+                    ? 'linear-gradient(180deg,#00e5ff,rgba(0,229,255,0.25))'
+                    : 'linear-gradient(180deg,#b388ff,rgba(179,136,255,0.25))';
+                return `<div class="lnd-spark-bar" style="height:${h}%;background:${bg};animation-delay:${delay}s" title="${monthly[i].month}: $${Number(v).toLocaleString()}"></div>`;
+            }).join('');
+        }
+    } catch (e) {
+        const dr = document.getElementById('lndDateRange');
+        if (dr) dr.textContent = 'Jul 2022 → Sep 2023  ·  15 months';
+    }
+}
+
+function enterDashboard() {
+    const overlay = document.getElementById('landingOverlay');
+    if (!overlay) return;
+    overlay.classList.add('lnd-exit');
+    setTimeout(() => {
+        overlay.classList.add('lnd-gone');
+        if (_stopParticles) { _stopParticles(); _stopParticles = null; }
+    }, 700);
+}
+
 // ===== Event Listeners =====
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chatInput').addEventListener('keydown', e => {
@@ -889,5 +1009,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Init
+// Init — landing and dashboard load in parallel
+initLanding();
 initDashboard();
