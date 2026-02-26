@@ -103,6 +103,25 @@ body {
 .subtitle {
   color: var(--text-secondary); font-size: 13px; font-weight: 400;
 }
+.header-right {
+  display: flex; align-items: center; gap: 12px;
+}
+.home-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 18px;
+  background: rgba(0, 229, 255, 0.07);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 20px;
+  color: var(--cyan); font-family: var(--font); font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.home-btn:hover {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: var(--cyan);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 229, 255, 0.2);
+}
 .header-badge {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 16px;

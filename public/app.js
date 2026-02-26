@@ -996,6 +996,19 @@ function enterDashboard() {
     }, 700);
 }
 
+function goHome() {
+    const overlay = document.getElementById('landingOverlay');
+    if (!overlay) return;
+    // Reset transition state
+    overlay.classList.remove('lnd-exit', 'lnd-gone');
+    // Restart particles
+    if (_stopParticles) { _stopParticles(); _stopParticles = null; }
+    const canvas = document.getElementById('landingCanvas');
+    if (canvas) _stopParticles = initLandingParticles(canvas);
+    // Scroll dashboard back to top so it's ready when user returns
+    window.scrollTo({ top: 0 });
+}
+
 // ===== Event Listeners =====
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chatInput').addEventListener('keydown', e => {
