@@ -33,13 +33,19 @@ const dashData = {};  // stores all fetched data for local drill-downs
 let currentDrillData = { title: '', columns: [], rows: [] };  // for CSV export
 
 // ===== Animated Counter =====
-function animateValue(el, end, prefix = '', suffix = '') {
+// compress=true → show $43.6M or 2.9M instead of full number
+function animateValue(el, end, prefix = '', suffix = '', compress = false) {
     const duration = 1500;
     const startTime = performance.now();
     function update(now) {
         const progress = Math.min((now - startTime) / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = prefix + Math.floor(end * eased).toLocaleString() + suffix;
+        const current = end * eased;
+        let display;
+        if (compress && end >= 1e6)      display = prefix + (current / 1e6).toFixed(1) + 'M';
+        else if (compress && end >= 1e4) display = prefix + (current / 1e3).toFixed(0) + 'K';
+        else                             display = prefix + Math.floor(current).toLocaleString() + suffix;
+        el.textContent = display;
         if (progress < 1) requestAnimationFrame(update);
     }
     requestAnimationFrame(update);
@@ -74,9 +80,9 @@ async function initDashboard() {
 
         Object.assign(dashData, { regions, categories, monthly, topSales, topProducts, teams, geo, profitability });
 
-        // --- KPI values ---
-        animateValue(document.getElementById('totalSales'), kpis.totalSales, '$');
-        animateValue(document.getElementById('totalBoxes'), kpis.totalBoxes);
+        // --- KPI values (compress large numbers to M/K) ---
+        animateValue(document.getElementById('totalSales'), kpis.totalSales, '$', '', true);
+        animateValue(document.getElementById('totalBoxes'), kpis.totalBoxes, '', '', true);
         animateValue(document.getElementById('avgSale'), kpis.avgSale, '$');
         animateValue(document.getElementById('productCount'), kpis.productCount);
         animateValue(document.getElementById('shipmentCount'), kpis.shipmentCount);
@@ -93,6 +99,9 @@ async function initDashboard() {
         renderTopProductsChart(topProducts);
         renderProfitabilityChart(profitability);
         renderTeamChart(teams);
+
+        // --- Auto insights strip ---
+        renderInsights(kpis, topSales, topProducts, regions, monthly);
 
         // --- "Click to explore" hints on chart headers ---
         document.querySelectorAll('.chart-card').forEach(card => {
@@ -160,6 +169,35 @@ function setupKPIClicks(monthly, profitability) {
         openDrill('👥', 'Full Sales Team', 'All sales persons ranked by total revenue',
             ['Sales Person', 'Team', 'Location', 'Revenue ($)', 'Boxes', 'Shipments'], rows);
     });
+}
+
+// ===== Auto Insights Strip =====
+function renderInsights(kpis, topSales, topProducts, regions, monthly) {
+    const strip = document.getElementById('insightsStrip');
+    if (!strip) return;
+
+    const peakMonth = monthly.reduce((a, b) => Number(b.totalSales) > Number(a.totalSales) ? b : a);
+    const [py, pm] = peakMonth.month.split('-');
+    const peakName = new Date(py, pm - 1).toLocaleDateString('en', { month: 'short', year: 'numeric' });
+    const regionShare = ((regions[0].totalSales / kpis.totalSales) * 100).toFixed(1);
+
+    const cards = [
+        { icon: '🏆', label: 'Top Performer',  value: topSales[0].name,        sub: '$' + (topSales[0].totalSales / 1e6).toFixed(2) + 'M revenue' },
+        { icon: '🍫', label: 'Best Product',   value: topProducts[0].product,  sub: '$' + (topProducts[0].totalSales / 1e6).toFixed(2) + 'M revenue' },
+        { icon: '🌍', label: 'Leading Region', value: regions[0].region,       sub: regionShare + '% of total revenue' },
+        { icon: '📈', label: 'Peak Month',     value: peakName,                sub: '$' + (peakMonth.totalSales / 1e6).toFixed(2) + 'M in sales' }
+    ];
+
+    strip.innerHTML = cards.map((c, i) => `
+        <div class="insight-card" style="animation-delay:${i * 0.08}s">
+            <span class="insight-icon">${c.icon}</span>
+            <div class="insight-body">
+                <span class="insight-label">${c.label}</span>
+                <span class="insight-value">${c.value}</span>
+                <span class="insight-sub">${c.sub}</span>
+            </div>
+        </div>
+    `).join('');
 }
 
 // ===== Chart Renderers =====
@@ -491,7 +529,7 @@ function _fmtCell(val, col) {
 }
 
 function openDrill(icon, title, subtitle, columns, rows) {
-    // Save for CSV export
+    // Save original data for CSV export (no rank column)
     currentDrillData = { title, columns, rows };
 
     document.getElementById('drillIcon').textContent = icon;
@@ -499,14 +537,43 @@ function openDrill(icon, title, subtitle, columns, rows) {
     document.getElementById('drillSubtitle').textContent = subtitle;
     document.getElementById('drillCount').textContent = rows.length + ' record' + (rows.length !== 1 ? 's' : '');
 
+    // thead: add rank column
     document.getElementById('drillHead').innerHTML =
-        '<tr>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
+        '<tr><th class="drill-rank-th">#</th>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
+
+    // Precompute max per revenue/sales column for progress bars
+    const maxVals = {};
+    columns.forEach((col, ci) => {
+        if (col.includes('$') || col.toLowerCase().includes('revenue') || col.toLowerCase().includes('sales')) {
+            const nums = rows.map(r => Number(Object.values(r)[ci])).filter(n => !isNaN(n) && n > 0);
+            if (nums.length) maxVals[ci] = Math.max(...nums);
+        }
+    });
+
+    // Medals only for ranked (non-chronological) data
+    const isRanked = !columns[0].toLowerCase().includes('month');
 
     document.getElementById('drillBody').innerHTML = rows.map((row, ri) => {
-        const cells = Object.values(row).map((val, ci) =>
-            `<td>${_fmtCell(val, columns[ci] || '')}</td>`
-        ).join('');
-        return `<tr class="${ri === 0 ? 'drill-top' : ''}">${cells}</tr>`;
+        const rankCell = isRanked
+            ? (ri === 0 ? '🥇' : ri === 1 ? '🥈' : ri === 2 ? '🥉' : ri + 1)
+            : ri + 1;
+
+        const cells = Object.values(row).map((val, ci) => {
+            const formatted = _fmtCell(val, columns[ci] || '');
+            const num = Number(val);
+            if (maxVals[ci] !== undefined && !isNaN(num) && num > 0) {
+                const pct = ((num / maxVals[ci]) * 100).toFixed(1);
+                return `<td class="drill-bar-cell">
+                    <div class="drill-bar-bg"><div class="drill-bar-fill" style="width:${pct}%"></div></div>
+                    <span>${formatted}</span>
+                </td>`;
+            }
+            return `<td>${formatted}</td>`;
+        }).join('');
+
+        return `<tr class="${ri < 3 ? 'drill-top' : ''}">
+            <td class="drill-rank">${rankCell}</td>${cells}
+        </tr>`;
     }).join('');
 
     document.getElementById('drillOverlay').classList.add('open');
