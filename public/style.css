@@ -566,7 +566,7 @@ body {
   color: var(--purple); transform: scale(1.1);
 }
 .drill-content {
-  flex: 1; overflow-y: auto; padding: 20px 28px 24px;
+  flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 24px;
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 100, 255, 0.2) transparent;
 }
@@ -579,10 +579,10 @@ body {
 }
 .drill-table thead th {
   padding: 11px 14px;
-  background: rgba(0, 229, 255, 0.06);
+  background: rgba(12, 12, 40, 0.97);
   border-bottom: 2px solid rgba(0, 229, 255, 0.2);
   color: var(--cyan); font-weight: 600; text-align: left;
-  position: sticky; top: 0; white-space: nowrap;
+  position: sticky; top: 0; z-index: 2; white-space: nowrap;
   backdrop-filter: blur(8px);
 }
 .drill-table tbody td {

@@ -625,10 +625,10 @@ function closeDrill() {
 async function drillMonth(month) {
     const [y, m] = month.split('-');
     const monthName = new Date(y, m - 1).toLocaleDateString('en', { month: 'long', year: 'numeric' });
-    showDrillLoading('📈', 'Monthly Breakdown', `Product performance for ${monthName}`);
-    const rows = await fetch(`/api/drill/month?month=${encodeURIComponent(month)}`).then(r => r.json());
-    openDrill('📈', 'Monthly Breakdown', `Product performance for ${monthName}`,
-        ['Product', 'Revenue ($)', 'Boxes', 'Shipments'], rows);
+    showDrillLoading('📅', 'Daily Trend', `Day-by-day breakdown for ${monthName}`);
+    const rows = await fetch(`/api/drill/month-daily?month=${encodeURIComponent(month)}`).then(r => r.json());
+    openDrill('📅', 'Daily Trend', `Day-by-day performance for ${monthName}`,
+        ['Date', 'Revenue ($)', 'Boxes', 'Shipments'], rows);
 }
 
 function drillRegion(region) {

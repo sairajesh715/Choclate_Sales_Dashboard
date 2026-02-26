@@ -194,6 +194,22 @@ app.get('/api/drill/month', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Drill: Daily breakdown for a specific month
+app.get('/api/drill/month-daily', async (req, res) => {
+    try {
+        const { month } = req.query;
+        const [rows] = await pool.query(`
+          SELECT DATE_FORMAT(s.Date, '%Y-%m-%d') as date,
+                 SUM(s.Amount) as totalSales, SUM(s.Boxes) as totalBoxes, COUNT(*) as shipments
+          FROM shipments s
+          WHERE DATE_FORMAT(s.Date, '%Y-%m') = ?
+          GROUP BY DATE_FORMAT(s.Date, '%Y-%m-%d')
+          ORDER BY date
+        `, [month]);
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Drill: Monthly breakdown for a specific salesperson
 app.get('/api/drill/salesperson', async (req, res) => {
     try {
