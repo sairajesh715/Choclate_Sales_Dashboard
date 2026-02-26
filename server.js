@@ -244,6 +244,21 @@ app.get('/api/drill/country', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ============== ADMIN / UTILITY ENDPOINTS ==============
+
+// Force re-seed: visit /api/reseed in browser to manually trigger seeding
+app.get('/api/reseed', async (req, res) => {
+    try {
+        console.log('🔄 Manual reseed triggered via /api/reseed');
+        const { runSeed } = require('./auto-seed');
+        await runSeed();
+        const [rows] = await pool.query('SELECT COUNT(*) as cnt FROM shipments');
+        res.json({ success: true, shipments: rows[0].cnt, message: `Seeded OK — ${rows[0].cnt} shipments loaded` });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // ============== CHATBOT API ENDPOINT ==============
 
 app.post('/api/chat', async (req, res) => {

@@ -35,15 +35,20 @@ let currentDrillData = { title: '', columns: [], rows: [] };  // for CSV export
 // ===== Animated Counter =====
 // compress=true → show $43.6M or 2.9M instead of full number
 function animateValue(el, end, prefix = '', suffix = '', compress = false) {
+    const num = Number(end);
+    if (end === null || end === undefined || isNaN(num)) {
+        el.textContent = '--';
+        return;
+    }
     const duration = 1500;
     const startTime = performance.now();
     function update(now) {
         const progress = Math.min((now - startTime) / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
-        const current = end * eased;
+        const current = num * eased;
         let display;
-        if (compress && end >= 1e6)      display = prefix + (current / 1e6).toFixed(1) + 'M';
-        else if (compress && end >= 1e4) display = prefix + (current / 1e3).toFixed(0) + 'K';
+        if (compress && num >= 1e6)      display = prefix + (current / 1e6).toFixed(1) + 'M';
+        else if (compress && num >= 1e4) display = prefix + (current / 1e3).toFixed(0) + 'K';
         else                             display = prefix + Math.floor(current).toLocaleString() + suffix;
         el.textContent = display;
         if (progress < 1) requestAnimationFrame(update);
