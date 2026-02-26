@@ -10,11 +10,10 @@ Chart.defaults.plugins.tooltip.cornerRadius = 10;
 Chart.defaults.plugins.tooltip.padding = 12;
 Chart.defaults.plugins.tooltip.titleFont = { weight: '600', size: 13 };
 
-// ===== Color Palette (2 colors: Cyan + Purple) =====
+// ===== Color Palette (Cyan + Purple only) =====
 const COLORS = {
     cyan: '#00e5ff',   cyanAlpha: 'rgba(0,229,255,0.15)',
     purple: '#b388ff', purpleAlpha: 'rgba(179,136,255,0.15)',
-    // Alternating: strong cyan, strong purple, dimmer cyan, dimmer purple …
     palette: [
         '#00e5ff', '#b388ff', '#00e5ff', '#b388ff',
         '#00e5ff', '#b388ff', '#00e5ff', '#b388ff',
@@ -29,8 +28,9 @@ const COLORS = {
     ]
 };
 
-// ===== Global Dashboard Data (for local drill-downs) =====
-const dashData = {};
+// ===== Global State =====
+const dashData = {};  // stores all fetched data for local drill-downs
+let currentDrillData = { title: '', columns: [], rows: [] };  // for CSV export
 
 // ===== Animated Counter =====
 function animateValue(el, end, prefix = '', suffix = '') {
@@ -43,6 +43,18 @@ function animateValue(el, end, prefix = '', suffix = '') {
         if (progress < 1) requestAnimationFrame(update);
     }
     requestAnimationFrame(update);
+}
+
+// ===== Click helper: get nearest element even if not clicked exactly on it =====
+function resolveElements(elements, event, chart) {
+    if (elements && elements.length) return elements;
+    // Fallback: find nearest element using intersect:false so clicking near a bar/point works
+    return chart.getElementsAtEventForMode(event.native, 'nearest', { intersect: false }, false);
+}
+
+// ===== Hover cursor =====
+function cursorOnHover(e, els) {
+    e.native.target.style.cursor = els.length ? 'pointer' : 'default';
 }
 
 // ===== Fetch all data & render =====
@@ -60,10 +72,9 @@ async function initDashboard() {
             fetch('/api/product-profitability').then(r => r.json())
         ]);
 
-        // Store for local drill-downs
         Object.assign(dashData, { regions, categories, monthly, topSales, topProducts, teams, geo, profitability });
 
-        // KPIs
+        // --- KPI values ---
         animateValue(document.getElementById('totalSales'), kpis.totalSales, '$');
         animateValue(document.getElementById('totalBoxes'), kpis.totalBoxes);
         animateValue(document.getElementById('avgSale'), kpis.avgSale, '$');
@@ -73,7 +84,7 @@ async function initDashboard() {
         document.getElementById('dateRange').textContent =
             `${kpis.startDate} → ${kpis.endDate} • ${kpis.shipmentCount.toLocaleString()} shipments`;
 
-        // Charts
+        // --- Charts ---
         renderMonthlyTrend(monthly);
         renderRegionChart(regions);
         renderCategoryChart(categories);
@@ -83,7 +94,7 @@ async function initDashboard() {
         renderProfitabilityChart(profitability);
         renderTeamChart(teams);
 
-        // Add drill-down hint to every chart header
+        // --- "Click to explore" hints on chart headers ---
         document.querySelectorAll('.chart-card').forEach(card => {
             const header = card.querySelector('.chart-header');
             if (header) {
@@ -94,14 +105,61 @@ async function initDashboard() {
             }
         });
 
+        // --- KPI card click handlers ---
+        setupKPIClicks(monthly, profitability);
+
     } catch (err) {
         console.error('Dashboard init error:', err);
     }
 }
 
-// ===== Pointer helper =====
-function cursorOnHover(e, els) {
-    e.native.target.style.cursor = els.length ? 'pointer' : 'default';
+// ===== KPI Card Click Handlers =====
+function setupKPIClicks(monthly, profitability) {
+    document.getElementById('kpi-sales').addEventListener('click', () => {
+        const rows = monthly.map(d => ({ month: d.month, totalSales: d.totalSales, totalBoxes: d.totalBoxes, shipmentCount: d.shipmentCount || '-' }));
+        openDrill('💰', 'Revenue by Month', 'Monthly revenue timeline — click any chart month for product breakdown',
+            ['Month', 'Revenue ($)', 'Boxes', 'Shipments'], rows);
+    });
+
+    document.getElementById('kpi-boxes').addEventListener('click', () => {
+        const rows = monthly.map(d => ({ month: d.month, totalBoxes: d.totalBoxes, totalSales: d.totalSales, shipmentCount: d.shipmentCount || '-' }));
+        openDrill('📦', 'Boxes Shipped by Month', 'Monthly boxes shipped across all regions',
+            ['Month', 'Boxes', 'Revenue ($)', 'Shipments'], rows);
+    });
+
+    document.getElementById('kpi-avg').addEventListener('click', () => {
+        const rows = [...profitability]
+            .sort((a, b) => parseFloat(b.revenuePerBox) - parseFloat(a.revenuePerBox))
+            .map(d => ({ product: d.product, category: d.category, revenuePerBox: parseFloat(d.revenuePerBox), costPerBox: parseFloat(d.costPerBox) }));
+        openDrill('📊', 'Revenue per Box by Product', 'Products ranked highest to lowest by average revenue per box shipped',
+            ['Product', 'Category', 'Revenue/Box ($)', 'Cost/Box ($)'], rows);
+    });
+
+    document.getElementById('kpi-products').addEventListener('click', () => {
+        const rows = profitability.map(d => ({
+            product: d.product, category: d.category,
+            costPerBox: parseFloat(d.costPerBox),
+            totalBoxes: d.totalBoxes, totalRevenue: d.totalRevenue
+        }));
+        openDrill('🍬', 'All Products', 'Complete product catalog with performance metrics',
+            ['Product', 'Category', 'Cost/Box ($)', 'Total Boxes', 'Revenue ($)'], rows);
+    });
+
+    document.getElementById('kpi-shipments').addEventListener('click', () => {
+        const rows = monthly.map(d => ({
+            month: d.month, shipmentCount: d.shipmentCount || '-',
+            totalSales: d.totalSales, totalBoxes: d.totalBoxes
+        }));
+        openDrill('🚚', 'Shipments by Month', 'Monthly shipment volume breakdown',
+            ['Month', 'Shipments', 'Revenue ($)', 'Boxes'], rows);
+    });
+
+    document.getElementById('kpi-persons').addEventListener('click', async () => {
+        showDrillLoading('👥', 'Full Sales Team', 'All sales persons ranked by total revenue');
+        const rows = await fetch('/api/all-salespersons').then(r => r.json());
+        openDrill('👥', 'Full Sales Team', 'All sales persons ranked by total revenue',
+            ['Sales Person', 'Team', 'Location', 'Revenue ($)', 'Boxes', 'Shipments'], rows);
+    });
 }
 
 // ===== Chart Renderers =====
@@ -124,14 +182,14 @@ function renderMonthlyTrend(data) {
                 {
                     label: 'Revenue ($)', data: data.map(d => d.totalSales),
                     borderColor: COLORS.cyan, backgroundColor: g1, fill: true, tension: 0.4,
-                    pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: COLORS.cyan,
-                    borderWidth: 2.5, yAxisID: 'y'
+                    pointRadius: 5, pointHoverRadius: 8, pointHitRadius: 20,
+                    pointBackgroundColor: COLORS.cyan, borderWidth: 2.5, yAxisID: 'y'
                 },
                 {
                     label: 'Boxes', data: data.map(d => d.totalBoxes),
                     borderColor: COLORS.purple, backgroundColor: g2, fill: true, tension: 0.4,
-                    pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: COLORS.purple,
-                    borderWidth: 2, yAxisID: 'y1'
+                    pointRadius: 4, pointHoverRadius: 7, pointHitRadius: 20,
+                    pointBackgroundColor: COLORS.purple, borderWidth: 2, yAxisID: 'y1'
                 }
             ]
         },
@@ -139,9 +197,10 @@ function renderMonthlyTrend(data) {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillMonth(data[elements[0].index].month);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillMonth(data[els[0].index].month);
             },
             scales: {
                 x: { grid: { color: 'rgba(100,100,255,0.06)' } },
@@ -168,9 +227,10 @@ function renderRegionChart(data) {
         options: {
             responsive: true, maintainAspectRatio: false, cutout: '65%',
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillRegion(data[elements[0].index].region);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillRegion(data[els[0].index].region);
             },
             plugins: {
                 legend: { position: 'bottom' },
@@ -197,9 +257,10 @@ function renderCategoryChart(data) {
             responsive: true, maintainAspectRatio: false,
             scales: { r: { display: false } },
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillCategory(data[elements[0].index].category);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillCategory(data[els[0].index].category);
             },
             plugins: {
                 legend: { position: 'bottom' },
@@ -225,9 +286,10 @@ function renderTopSalesChart(data) {
         options: {
             responsive: true, maintainAspectRatio: false, indexAxis: 'y',
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillSalesPerson(data[elements[0].index].name);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillSalesPerson(data[els[0].index].name);
             },
             scales: {
                 x: { grid: { color: 'rgba(100,100,255,0.06)' }, ticks: { callback: v => '$' + (v / 1e6).toFixed(1) + 'M' } },
@@ -257,9 +319,10 @@ function renderTopProductsChart(data) {
         options: {
             responsive: true, maintainAspectRatio: false,
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillProduct(data[elements[0].index].product);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillProduct(data[els[0].index].product);
             },
             scales: {
                 x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 30 } },
@@ -297,9 +360,10 @@ function renderTeamChart(data) {
         options: {
             responsive: true, maintainAspectRatio: false,
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillTeam(data[elements[0].index].team);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillTeam(data[els[0].index].team);
             },
             scales: {
                 x: { grid: { display: false } },
@@ -336,9 +400,10 @@ function renderCountryChart(data) {
         options: {
             responsive: true, maintainAspectRatio: false,
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                drillCountry(data[elements[0].index].country);
+            onClick: (e, elements, chart) => {
+                const els = resolveElements(elements, e, chart);
+                if (!els.length) return;
+                drillCountry(data[els[0].index].country);
             },
             scales: {
                 x: { grid: { display: false } },
@@ -385,10 +450,12 @@ function renderProfitabilityChart(data) {
         options: {
             responsive: true, maintainAspectRatio: false,
             onHover: cursorOnHover,
-            onClick: (e, elements) => {
-                if (!elements.length) return;
-                const { datasetIndex, index } = elements[0];
-                drillProfitability(datasets[datasetIndex].data[index]);
+            onClick: (e, elements, chart) => {
+                // Bubble charts need intersect:true for accurate bubble selection
+                const els = elements.length ? elements
+                    : chart.getElementsAtEventForMode(e.native, 'nearest', { intersect: true }, false);
+                if (!els.length) return;
+                drillProfitability(datasets[els[0].datasetIndex].data[els[0].index]);
             },
             scales: {
                 x: { title: { display: true, text: 'Cost per Box ($)', color: '#9494b8', font: { size: 12 } }, grid: { color: 'rgba(100,100,255,0.06)' }, ticks: { callback: v => '$' + v.toFixed(2) } },
@@ -400,12 +467,7 @@ function renderProfitabilityChart(data) {
                     callbacks: {
                         label: ctx => {
                             const d = ctx.raw;
-                            return [
-                                `  ${d.product}`,
-                                `  Cost/Box: $${d.x.toFixed(2)}`,
-                                `  Revenue/Box: $${d.y.toFixed(2)}`,
-                                `  Total Boxes: ${Number(d.totalBoxes).toLocaleString()}`
-                            ];
+                            return [`  ${d.product}`, `  Cost/Box: $${d.x.toFixed(2)}`, `  Revenue/Box: $${d.y.toFixed(2)}`, `  Total Boxes: ${Number(d.totalBoxes).toLocaleString()}`];
                         }
                     }
                 }
@@ -429,6 +491,9 @@ function _fmtCell(val, col) {
 }
 
 function openDrill(icon, title, subtitle, columns, rows) {
+    // Save for CSV export
+    currentDrillData = { title, columns, rows };
+
     document.getElementById('drillIcon').textContent = icon;
     document.getElementById('drillTitle').textContent = title;
     document.getElementById('drillSubtitle').textContent = subtitle;
@@ -456,6 +521,27 @@ function showDrillLoading(icon, title, subtitle) {
     document.getElementById('drillBody').innerHTML =
         '<tr><td colspan="10" class="drill-loading">⏳ Loading data...</td></tr>';
     document.getElementById('drillOverlay').classList.add('open');
+}
+
+function exportDrillCSV() {
+    const { title, columns, rows } = currentDrillData;
+    if (!rows.length) return;
+
+    // Build CSV: header row + data rows
+    const escape = v => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
+    const header = columns.map(escape).join(',');
+    const body = rows.map(row => Object.values(row).map(escape).join(',')).join('\n');
+    const csv = '\uFEFF' + header + '\n' + body;  // BOM for Excel UTF-8 compatibility
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = title.replace(/[^a-z0-9]/gi, '_') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 function closeDrill() {
@@ -680,11 +766,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chatInput').addEventListener('keydown', e => {
         if (e.key === 'Enter') sendMessage();
     });
-    // ESC closes the drill overlay
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closeDrill();
     });
-    // Click backdrop to close
     document.getElementById('drillOverlay').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeDrill();
     });

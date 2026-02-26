@@ -72,7 +72,9 @@ app.get('/api/sales-by-category', async (req, res) => {
 app.get('/api/monthly-trend', async (req, res) => {
     try {
         const [rows] = await pool.query(`
-      SELECT DATE_FORMAT(Date, '%Y-%m') as month, SUM(Amount) as totalSales, SUM(Boxes) as totalBoxes
+      SELECT DATE_FORMAT(Date, '%Y-%m') as month, SUM(Amount) as totalSales,
+             SUM(Boxes) as totalBoxes, COUNT(*) as shipmentCount,
+             ROUND(AVG(Amount), 2) as avgSale
       FROM shipments GROUP BY DATE_FORMAT(Date, '%Y-%m')
       ORDER BY month
     `);
@@ -144,6 +146,20 @@ app.get('/api/product-profitability', async (req, res) => {
       GROUP BY pr.Product, pr.Category, pr.\`Cost per Box\`
       ORDER BY totalRevenue DESC
     `);
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// All salespersons (for KPI card drill-down)
+app.get('/api/all-salespersons', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+          SELECT p.\`Sales Person\` as salesperson, p.Team as team, p.Location as location,
+                 SUM(s.Amount) as totalSales, SUM(s.Boxes) as totalBoxes, COUNT(*) as shipments
+          FROM shipments s JOIN people p ON s.\`Sales Person\` = p.\`SP ID\`
+          GROUP BY p.\`Sales Person\`, p.Team, p.Location
+          ORDER BY totalSales DESC
+        `);
         res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });

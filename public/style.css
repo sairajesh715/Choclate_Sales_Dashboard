@@ -138,7 +138,7 @@ body {
   display: flex; align-items: center; gap: 10px;
   backdrop-filter: blur(20px);
   transition: var(--transition);
-  cursor: default;
+  cursor: pointer;
   min-width: 0;
 }
 .kpi-card:hover {
@@ -160,7 +160,7 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kpi-value {
-  font-size: 20px; font-weight: 800;
+  font-size: 16px; font-weight: 800; letter-spacing: -0.3px;
   background: linear-gradient(135deg, var(--text-primary), var(--cyan));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -495,7 +495,7 @@ body {
   .logo h1 { font-size: 20px; }
 }
 @media (max-width: 480px) {
-  .kpi-value { font-size: 18px; }
+  .kpi-value { font-size: 15px; }
   .kpi-icon { font-size: 22px; }
 }
 
@@ -595,6 +595,21 @@ body {
 }
 .drill-table tbody tr.drill-top td {
   color: var(--text-primary); font-weight: 500;
+}
+.drill-export-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 14px;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--cyan); font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: var(--transition);
+}
+.drill-export-btn:hover {
+  background: rgba(0, 229, 255, 0.18);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.2);
+  transform: translateY(-1px);
 }
 .drill-loading {
   text-align: center; padding: 40px !important;
