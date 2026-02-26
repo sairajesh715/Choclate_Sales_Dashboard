@@ -14,17 +14,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 const nlpEngine = new NLPEngine();
 
 // MySQL connection pool
-// Supports both Railway's auto-injected vars (MYSQLHOST etc.) and local .env vars
-const pool = mysql.createPool({
-    host:     process.env.MYSQLHOST     || process.env.DB_HOST || 'localhost',
-    port:     process.env.MYSQLPORT     || process.env.DB_PORT || 3306,
-    user:     process.env.MYSQLUSER     || process.env.USERNAME || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.PASSWORD,
-    database: process.env.MYSQLDATABASE || process.env.DATABASENAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    charset: 'utf8mb4'
-});
+// Supports Railway MYSQL_URL, Railway individual vars, or local .env
+function getDBConfig() {
+    if (process.env.MYSQL_URL) {
+        // Railway private network connection string: mysql://user:pass@host:port/db
+        const u = new URL(process.env.MYSQL_URL);
+        return {
+            host: u.hostname, port: Number(u.port) || 3306,
+            user: u.username, password: u.password,
+            database: u.pathname.slice(1),
+            waitForConnections: true, connectionLimit: 10, charset: 'utf8mb4'
+        };
+    }
+    return {
+        host:     process.env.MYSQLHOST     || process.env.DB_HOST || 'localhost',
+        port:     Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
+        user:     process.env.MYSQLUSER     || process.env.USERNAME || 'root',
+        password: process.env.MYSQLPASSWORD || process.env.PASSWORD,
+        database: process.env.MYSQLDATABASE || process.env.DATABASENAME,
+        waitForConnections: true, connectionLimit: 10, charset: 'utf8mb4'
+    };
+}
+const pool = mysql.createPool(getDBConfig());
 
 // ============== DASHBOARD API ENDPOINTS ==============
 

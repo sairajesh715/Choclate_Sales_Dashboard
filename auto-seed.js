@@ -26,6 +26,15 @@ function parseStatements(sql) {
 }
 
 function getConnCfg() {
+    if (process.env.MYSQL_URL) {
+        const u = new URL(process.env.MYSQL_URL);
+        return {
+            host: u.hostname, port: Number(u.port) || 3306,
+            user: u.username, password: u.password,
+            database: u.pathname.slice(1),
+            charset: 'utf8mb4', connectTimeout: 30000
+        };
+    }
     return {
         host:     process.env.MYSQLHOST     || process.env.DB_HOST || 'localhost',
         port:     Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
