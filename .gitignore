@@ -11,4 +11,4 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
-raj_db_export.sql
+# raj_db_export.sql is intentionally committed — used for auto-seeding on Railway

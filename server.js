@@ -4,6 +4,7 @@ const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
 const NLPEngine = require('./nlp-engine');
+const autoSeed = require('./auto-seed');
 
 const app = express();
 app.use(cors());
@@ -13,11 +14,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 const nlpEngine = new NLPEngine();
 
 // MySQL connection pool
+// Supports both Railway's auto-injected vars (MYSQLHOST etc.) and local .env vars
 const pool = mysql.createPool({
-    host: 'localhost',
-    user: process.env.USERNAME || 'root',
-    password: process.env.PASSWORD,
-    database: process.env.DATABASENAME,
+    host:     process.env.MYSQLHOST     || process.env.DB_HOST || 'localhost',
+    port:     process.env.MYSQLPORT     || process.env.DB_PORT || 3306,
+    user:     process.env.MYSQLUSER     || process.env.USERNAME || 'root',
+    password: process.env.MYSQLPASSWORD || process.env.PASSWORD,
+    database: process.env.MYSQLDATABASE || process.env.DATABASENAME,
     waitForConnections: true,
     connectionLimit: 10,
     charset: 'utf8mb4'
@@ -324,8 +327,15 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// Serve the app
+// Auto-seed database on first run, then start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🍫 Chocolate Sales Dashboard running at http://localhost:${PORT}`);
+autoSeed(pool).then(() => {
+    app.listen(PORT, () => {
+        console.log(`🍫 Chocolate Sales Dashboard running at http://localhost:${PORT}`);
+    });
+}).catch(err => {
+    console.error('Startup error:', err.message);
+    app.listen(PORT, () => {
+        console.log(`🍫 Chocolate Sales Dashboard running at http://localhost:${PORT}`);
+    });
 });
