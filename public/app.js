@@ -31,6 +31,7 @@ const COLORS = {
 // ===== Global State =====
 const dashData = {};  // stores all fetched data for local drill-downs
 let currentDrillData = { title: '', columns: [], rows: [] };  // for CSV export
+let drillChart = null;  // active Chart.js instance inside drill modal
 
 // ===== Animated Counter =====
 // compress=true → show $43.6M or 2.9M instead of full number
@@ -107,17 +108,6 @@ async function initDashboard() {
 
         // --- Auto insights strip ---
         renderInsights(kpis, topSales, topProducts, regions, monthly);
-
-        // --- "Click to explore" hints on chart headers ---
-        document.querySelectorAll('.chart-card').forEach(card => {
-            const header = card.querySelector('.chart-header');
-            if (header) {
-                const hint = document.createElement('span');
-                hint.className = 'drill-hint';
-                hint.textContent = '🔍 click to explore';
-                header.appendChild(hint);
-            }
-        });
 
         // --- KPI card click handlers ---
         setupKPIClicks(monthly, profitability);
@@ -534,6 +524,9 @@ function _fmtCell(val, col) {
 }
 
 function openDrill(icon, title, subtitle, columns, rows) {
+    // Hide chart area by default (only shown for month drill-down)
+    document.getElementById('drillChartWrap').style.display = 'none';
+
     // Save original data for CSV export (no rank column)
     currentDrillData = { title, columns, rows };
 
@@ -618,6 +611,8 @@ function exportDrillCSV() {
 
 function closeDrill() {
     document.getElementById('drillOverlay').classList.remove('open');
+    if (drillChart) { drillChart.destroy(); drillChart = null; }
+    document.getElementById('drillChartWrap').style.display = 'none';
 }
 
 // ===== Drill Handlers =====
@@ -629,6 +624,54 @@ async function drillMonth(month) {
     const rows = await fetch(`/api/drill/month-daily?month=${encodeURIComponent(month)}`).then(r => r.json());
     openDrill('📅', 'Daily Trend', `Day-by-day performance for ${monthName}`,
         ['Date', 'Revenue ($)', 'Boxes', 'Shipments'], rows);
+    showDrillChart(rows, monthName);
+}
+
+function showDrillChart(rows, monthName) {
+    if (drillChart) { drillChart.destroy(); drillChart = null; }
+
+    const wrap = document.getElementById('drillChartWrap');
+    wrap.style.display = 'block';
+
+    const ctx = document.getElementById('drillChartCanvas').getContext('2d');
+    const g1 = ctx.createLinearGradient(0, 0, 0, 200);
+    g1.addColorStop(0, 'rgba(0,229,255,0.3)'); g1.addColorStop(1, 'rgba(0,229,255,0)');
+    const g2 = ctx.createLinearGradient(0, 0, 0, 200);
+    g2.addColorStop(0, 'rgba(179,136,255,0.2)'); g2.addColorStop(1, 'rgba(179,136,255,0)');
+
+    drillChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: rows.map(d => {
+                const date = new Date(d.date + 'T00:00:00');
+                return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+            }),
+            datasets: [
+                {
+                    label: 'Revenue ($)', data: rows.map(d => d.totalSales),
+                    borderColor: COLORS.cyan, backgroundColor: g1, fill: true, tension: 0.4,
+                    pointRadius: 4, pointHoverRadius: 7, pointHitRadius: 16,
+                    pointBackgroundColor: COLORS.cyan, borderWidth: 2, yAxisID: 'y'
+                },
+                {
+                    label: 'Boxes', data: rows.map(d => d.totalBoxes),
+                    borderColor: COLORS.purple, backgroundColor: g2, fill: true, tension: 0.4,
+                    pointRadius: 3, pointHoverRadius: 6, pointHitRadius: 16,
+                    pointBackgroundColor: COLORS.purple, borderWidth: 2, yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { grid: { color: 'rgba(100,100,255,0.06)' }, ticks: { font: { size: 10 }, maxRotation: 40 } },
+                y: { type: 'linear', position: 'left', grid: { color: 'rgba(100,100,255,0.06)' }, ticks: { callback: v => '$' + (v / 1e3).toFixed(0) + 'K' } },
+                y1: { type: 'linear', position: 'right', grid: { display: false }, ticks: { callback: v => v.toLocaleString() } }
+            },
+            plugins: { legend: { position: 'top' } }
+        }
+    });
 }
 
 function drillRegion(region) {
