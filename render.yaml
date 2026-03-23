@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: chocolate-sales-dashboard
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MYSQL_URL
+        sync: false       # You will set this in Render dashboard
