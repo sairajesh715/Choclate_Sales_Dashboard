@@ -7,10 +7,11 @@ SET NAMES utf8mb4;
 -- ===== geo =====
 DROP TABLE IF EXISTS `geo`;
 CREATE TABLE `geo` (
-  `GeoID` text,
+  `GeoID` varchar(20) NOT NULL,
   `Geo` text,
-  `Region` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `Region` text,
+  PRIMARY KEY (`GeoID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `geo` (`GeoID`, `Geo`, `Region`) VALUES
   ('G1', 'India', 'APAC'),
@@ -24,10 +25,11 @@ INSERT INTO `geo` (`GeoID`, `Geo`, `Region`) VALUES
 DROP TABLE IF EXISTS `people`;
 CREATE TABLE `people` (
   `Sales Person` text,
-  `SP ID` text,
+  `SP ID` varchar(20) NOT NULL,
   `Team` text,
-  `Location` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `Location` text,
+  PRIMARY KEY (`SP ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `people` (`Sales Person`, `SP ID`, `Team`, `Location`) VALUES
   ('Ramalingam Kothapeta', 'SP01', 'Yummies', 'Hyderabad'),
@@ -67,12 +69,13 @@ INSERT INTO `people` (`Sales Person`, `SP ID`, `Team`, `Location`) VALUES
 -- ===== products =====
 DROP TABLE IF EXISTS `products`;
 CREATE TABLE `products` (
-  `Product ID` text,
+  `Product ID` varchar(20) NOT NULL,
   `Product` text,
   `Category` text,
   `Size` text,
-  `Cost per Box` double DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `Cost per Box` double DEFAULT NULL,
+  PRIMARY KEY (`Product ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `products` (`Product ID`, `Product`, `Category`, `Size`, `Cost per Box`) VALUES
   ('P01', 'Milk Bars', 'Bars', 'LARGE', 1.52),
@@ -101,13 +104,15 @@ INSERT INTO `products` (`Product ID`, `Product`, `Category`, `Size`, `Cost per B
 -- ===== shipments =====
 DROP TABLE IF EXISTS `shipments`;
 CREATE TABLE `shipments` (
+  `id` int NOT NULL AUTO_INCREMENT,
   `Sales Person` text,
   `Geo` text,
   `Product` text,
   `Date` text,
   `Amount` int DEFAULT NULL,
-  `Boxes` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `Boxes` int DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `shipments` (`Sales Person`, `Geo`, `Product`, `Date`, `Amount`, `Boxes`) VALUES
   ('SP01', 'G4', 'P04', '2022-07-01', 8414, 495),
